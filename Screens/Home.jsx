@@ -23,6 +23,7 @@ import ProfileImage from "../assets/ProfileImage.jpg";
 import ReservationList from "react-native-calendars/src/agenda/reservation-list";
 
 const Home = () => {
+  const navigation = useNavigation();
   const [fontsLoaded] = useFonts({
     ZonaProBold: require("../assets/fonts/zona-pro/ZonaPro-Bold.otf"),
     ZonaExtraLight: require("../assets/fonts/zona-pro/ZonaPro-ExtraLight.otf"),
@@ -173,7 +174,7 @@ const Home = () => {
     let result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
       quality: 1,
-      aspect: [4, 3],
+      aspect: [5, 5],
     });
 
     if (!result.canceled) {
@@ -329,6 +330,8 @@ const Home = () => {
               fontFamily: "ZonaProBold",
               fontSize: 14,
               lineHeight: 23,
+              // backgroundColor: "red",
+              width: "100%",
             }}
           >
             Employee Attendance
@@ -389,6 +392,9 @@ const Home = () => {
             paddingHorizontal: 15,
             elevation: 100,
           }}
+          onPress={() => {
+            navigation.navigate("PeerAttendance");
+          }}
         >
           <Text
             style={{
@@ -396,6 +402,7 @@ const Home = () => {
               fontFamily: "ZonaProBold",
               fontSize: 14,
               lineHeight: 23,
+              width: "100%",
             }}
           >
             Peer Attendance
@@ -456,6 +463,9 @@ const Home = () => {
             paddingHorizontal: 15,
             elevation: 100,
           }}
+          onPress={() => {
+            navigation.navigate("LeaveManagement");
+          }}
         >
           <Text
             style={{
@@ -464,6 +474,7 @@ const Home = () => {
               fontSize: 14,
               lineHeight: 23,
               textAlign: "left",
+              width: "100%",
             }}
           >
             Managing Leaves
@@ -527,6 +538,7 @@ const Home = () => {
               fontSize: 14,
               lineHeight: 23,
               textAlign: "left",
+              width: "100%",
             }}
           >
             Emergency (SOS)

@@ -1,4 +1,5 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import React from "react";
 import { useFonts } from "expo-font";
 import Ionicons from "react-native-vector-icons/Ionicons"; // Import vector icons
@@ -6,10 +7,12 @@ import FontAwesome from "react-native-vector-icons/FontAwesome"; // Import vecto
 import ProfileImg from "../assets/ProfileImage.jpg";
 
 const Profile = () => {
+  const navigation = useNavigation();
   const [fontsLoaded] = useFonts({
     ZonaProBold: require("../assets/fonts/zona-pro/ZonaPro-Bold.otf"),
     ZonaExtraLight: require("../assets/fonts/zona-pro/ZonaPro-ExtraLight.otf"),
   });
+
   return (
     <View style={styles.container}>
       <View
@@ -149,6 +152,9 @@ const Profile = () => {
               justifyContent: "center",
               alignItems: "center",
               borderRadius: 5,
+            }}
+            onPress={() => {
+              navigation.navigate("ManageUser");
             }}
           >
             <Ionicons
