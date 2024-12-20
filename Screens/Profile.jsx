@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import Ionicons from "react-native-vector-icons/Ionicons"; // Import vector icons
 import FontAwesome from "react-native-vector-icons/FontAwesome"; // Import vector icons
 import ProfileImg from "../assets/ProfileImage.jpg";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Profile = () => {
   const navigation = useNavigation();
@@ -296,6 +297,10 @@ const Profile = () => {
           height: 40,
           width: 100,
           marginTop: 50,
+        }}
+        onPress={() => {
+          AsyncStorage.removeItem("token");
+          navigation.navigate("Login");
         }}
       >
         <Text style={{ fontFamily: "ZonaProBold", color: "#49CBEB" }}>

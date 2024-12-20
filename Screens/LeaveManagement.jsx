@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Picker } from "@react-native-picker/picker"; // Import from @react-native-picker/picker
 import { TouchableOpacity } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LeaveManagement = () => {
   const [leaveType, setLeaveType] = useState("Casual Leave");
@@ -25,14 +26,58 @@ const LeaveManagement = () => {
     ZonaProBold: require("../assets/fonts/zona-pro/ZonaPro-Bold.otf"),
     ZonaExtraLight: require("../assets/fonts/zona-pro/ZonaPro-ExtraLight.otf"),
   });
+  const [token, setToken] = useState(null);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem("token");
+        if (storedToken) {
+          setToken(storedToken); // Set the token in state if found
+        } else {
+          console.log("No token found");
+        }
+      } catch (error) {
+        console.error("Error fetching token from AsyncStorage", error);
+      }
+    };
+
+    fetchToken();
+  }, []); // This effect runs only once when the component mounts
+
+  const handleSubmit = async () => {
     if (!startDate || !endDate || !leaveReason) {
       alert("Please fill in all fields.");
       return;
     }
-    // You can add your submit logic here, like API calls
-    alert("Leave request submitted successfully!");
+
+    try {
+      const response = await fetch("http://192.168.0.102:3000/applyLeave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Pass token in the Authorization header
+        },
+        body: JSON.stringify({
+          LeaveType: leaveType,
+          StartDate: startDate,
+          EndDate: endDate,
+          LeaveStatus: "Pending", // Default status can be set here
+          LeaveReason: leaveReason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Leave request submitted successfully!");
+      } else {
+        alert(data.message || "Something went wrong. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting leave request:", error);
+      alert("An error occurred while submitting the leave request.");
+    }
   };
 
   return (

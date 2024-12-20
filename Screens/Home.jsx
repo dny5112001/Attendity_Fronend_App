@@ -5,6 +5,8 @@ import {
   StyleSheet,
   Text,
   View,
+  BackHandler,
+  Alert,
 } from "react-native";
 import React, { useState } from "react";
 import { useEffect } from "react";
@@ -14,13 +16,14 @@ import Icon from "react-native-vector-icons/FontAwesome5";
 import Entypo from "react-native-vector-icons/Entypo";
 import { TouchableOpacity } from "react-native";
 import * as Location from "expo-location";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { FlatList } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Asset } from "expo-asset";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import ProfileImage from "../assets/ProfileImage.jpg";
 import ReservationList from "react-native-calendars/src/agenda/reservation-list";
+import * as SMS from "expo-sms";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -34,10 +37,36 @@ const Home = () => {
   const [showModal, setShowModal] = useState(false);
   const [imageUri, setImageUri] = useState(null); // For storing the captured image
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const backAction = () => {
+        Alert.alert("Exit App", "Are you sure you want to exit?", [
+          {
+            text: "Cancel",
+            onPress: () => null,
+            style: "cancel",
+          },
+          {
+            text: "YES",
+            onPress: () => BackHandler.exitApp(),
+          },
+        ]);
+        return true; // Prevent default behavior
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        backAction
+      );
+
+      // Clean up when the screen is unfocused
+      return () => backHandler.remove();
+    }, [])
+  );
   // Function to calculate distance between two points (Haversine formula)
   const calculateDistance = (lat, lon) => {
-    const targetLat = 19.077005; // Replace with the target location's latitude
-    const targetLon = 72.847765; // Replace with the target location's longitude
+    const targetLat = 19.176572; // Replace with the target location's latitude
+    const targetLon = 72.845215; // Replace with the target location's longitude
     const R = 6371; // Radius of the Earth in km
     const dLat = ((lat - targetLat) * Math.PI) / 180;
     const dLon = ((lon - targetLon) * Math.PI) / 180;
@@ -59,7 +88,7 @@ const Home = () => {
 
       if (isVerified) {
         setShowModal(false); // Close modal after successful verification
-        alert("Success");
+        alert("Checked In Successfull");
 
         const checkInTime = new Date().toLocaleTimeString();
         console.log("Check-In Time:", checkInTime);
@@ -102,7 +131,7 @@ const Home = () => {
         name: "staticImage.jpg",
       });
 
-      const response = await fetch("http://192.168.0.103:5000/compare_faces", {
+      const response = await fetch("http://192.168.138.88:5000/compare_faces", {
         method: "POST",
         body: formData,
         headers: {
@@ -133,7 +162,7 @@ const Home = () => {
       location.coords.longitude
     );
 
-    const isInside = distance <= 0.006; // 0.2 km or 200 meters threshold
+    const isInside = distance <= 0.5; // 0.2 km or 200 meters threshold
     console.log(distance);
 
     if (isInside && !wasInside) {
@@ -185,11 +214,53 @@ const Home = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       checkLocation();
-    }, 10000); // Check every 10 seconds
+    }, 5000); // Check every 5 seconds
 
     return () => clearInterval(interval); // Clean up on component unmount
   }, [wasInside]);
 
+  const sendSOS = async () => {
+    try {
+      // Get the current location
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      // Construct the SOS message with coordinates and Google Maps link
+      const message = `This is an SOS message. Please help! Location: Latitude: ${latitude}, Longitude: ${longitude}. 
+    View on Google Maps: https://www.google.com/maps?q=${latitude},${longitude}`;
+
+      // Array of phone numbers to send SMS to
+      const phoneNumbers = ["9136833946"]; // Add more numbers as needed
+
+      // Send the SMS with the SOS message
+      const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
+
+      // Prepare data for backend API
+      const token = await AsyncStorage.getItem("token");
+      console.log(token);
+      const response = await fetch("http://192.168.0.101:3000/addSOS", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          RecipientContactNumbers: phoneNumbers.join(","),
+        }),
+      });
+
+      if (response.ok) {
+        Alert.alert("SOS message has been sent and recorded!");
+      } else {
+        const errorData = await response.json();
+        console.error("Backend error:", errorData);
+        Alert.alert("SOS message sent, but failed to record on the server.");
+      }
+    } catch (error) {
+      console.error("Error sending SOS:", error);
+      Alert.alert("An error occurred while sending the SOS message.");
+    }
+  };
   return (
     <View style={styles.container}>
       <StatusBar style="auto" backgroundColor="#f4f5f6" />
@@ -254,7 +325,7 @@ const Home = () => {
                 Verify Face
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={() => setShowModal(false)}
               style={{
                 width: "100%",
@@ -269,7 +340,7 @@ const Home = () => {
               <Text style={{ fontFamily: "ZonaProBold", color: "#f4f5f6" }}>
                 Cancel
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </Modal>
@@ -285,6 +356,9 @@ const Home = () => {
           Hello , Deepak 👋
         </Text>
         <TouchableOpacity
+          onPress={() => {
+            navigation.navigate("Notifications");
+          }}
           style={{
             width: 35,
             height: 35,
@@ -530,6 +604,7 @@ const Home = () => {
             paddingVertical: 15,
             paddingHorizontal: 15,
           }}
+          onPress={sendSOS}
         >
           <Text
             style={{

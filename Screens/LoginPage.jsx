@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { useFonts } from "expo-font";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Pressable,
   StatusBar,
@@ -8,7 +8,9 @@ import {
   Text,
   TextInput,
   View,
+  Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LoginPage = () => {
   const navigation = useNavigation();
@@ -18,8 +20,62 @@ const LoginPage = () => {
   });
 
   const [buttonColor, setButtonColor] = useState("#49cbeb");
+  const buttonTextColor = buttonColor === "#49cbeb" ? "black" : "#fff";
 
-  const buttonTextColor = buttonColor === "#49cbeb" ? "black" : "#fff"; // New variable
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (token) {
+          // If token exists, navigate directly to the Tab screen
+          navigation.navigate("Tab");
+        }
+      } catch (error) {
+        console.error("Error checking token:", error);
+      }
+    };
+
+    checkToken();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  const handleLogin = async () => {
+    try {
+      const response = await fetch("http://192.168.0.101:3000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          Email: email,
+          Password: password,
+        }),
+      });
+
+      const contentType = response.headers.get("Content-Type");
+
+      if (response.ok) {
+        if (contentType && contentType.includes("application/json")) {
+          const result = await response.json();
+          const { token, user } = result;
+
+          await AsyncStorage.setItem("token", token);
+          console.log(user, token);
+          navigation.navigate("Tab");
+        } else {
+          throw new Error("Invalid response format");
+        }
+      } else {
+        const result = await response.text();
+        Alert.alert("Login Failed", result || "Invalid email or password");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      Alert.alert("Login Failed", "An error occurred. Please try again.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -31,19 +87,21 @@ const LoginPage = () => {
           placeholder="Enter email"
           keyboardType="email-address"
           autoCapitalize="none"
+          value={email}
+          onChangeText={(text) => setEmail(text)}
         />
         <TextInput
           style={styles.textInput}
           placeholder="Enter password"
           secureTextEntry={true}
+          value={password}
+          onChangeText={(text) => setPassword(text)}
         />
         <Pressable
           style={[styles.button, { backgroundColor: buttonColor }]}
-          onPress={() => {
-            navigation.navigate("Tab");
-          }}
-          onPressIn={() => setButtonColor("#000")} // Darker color on press
-          onPressOut={() => setButtonColor("#49cbeb")} // Original color on release
+          onPress={handleLogin}
+          onPressIn={() => setButtonColor("#000")}
+          onPressOut={() => setButtonColor("#49cbeb")}
         >
           <Text style={[styles.buttonText, { color: buttonTextColor }]}>
             Login

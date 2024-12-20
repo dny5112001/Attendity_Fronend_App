@@ -9,9 +9,12 @@ import {
   ScrollView,
   Image,
   StatusBar,
+  Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useFonts } from "expo-font";
+import * as Device from "expo-device";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Register = () => {
   const navigation = useNavigation();
@@ -22,6 +25,16 @@ const Register = () => {
     ZonaProBold: require("../assets/fonts/zona-pro/ZonaPro-Bold.otf"),
     ZonaExtraLight: require("../assets/fonts/zona-pro/ZonaPro-ExtraLight.otf"),
   });
+
+  // Form state
+  const [FirstName, setFirstName] = useState("");
+  const [LastName, setLastName] = useState("");
+  const [Email, setEmail] = useState("");
+  const [Phone, setPhone] = useState("");
+  const [Password, setPassword] = useState("");
+  const [Department, setDepartment] = useState("");
+  const [Designation, setDesignation] = useState("");
+  const [DateOfJoining, setDateOfJoining] = useState("");
 
   const pickImage = async () => {
     const permissionResult =
@@ -44,6 +57,71 @@ const Register = () => {
       console.log(result.assets[0].uri);
     }
   };
+  const handleRegister = async () => {
+    if (
+      !FirstName ||
+      !LastName ||
+      !Email ||
+      !Phone ||
+      !Password ||
+      !Department ||
+      !Designation ||
+      !DateOfJoining
+    ) {
+      Alert.alert("Error", "All fields are required.");
+      return;
+    }
+
+    const DeviceId =
+      Device.deviceName +
+      "-" +
+      Device.brand +
+      "-" +
+      Device.osBuildFingerprint +
+      "-" +
+      Device.deviceType;
+
+    const formData = new FormData();
+    formData.append("FirstName", FirstName);
+    formData.append("LastName", LastName);
+    formData.append("Email", Email);
+    formData.append("Phone", Phone);
+    formData.append("Password", Password);
+    formData.append("Department", Department);
+    formData.append("Designation", Designation);
+    formData.append("DateOfJoining", DateOfJoining);
+    formData.append("DeviceId", DeviceId);
+
+    if (imageUri) {
+      const image = {
+        uri: imageUri,
+        type: "image/jpeg", // or the appropriate mime type for your image
+        name: "profile.jpg",
+      };
+      formData.append("profilePic", image);
+    }
+
+    try {
+      const response = await fetch("http://192.168.0.101:3000/register", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log(data);
+      // AsyncStorage.setItem("token", data.token);
+
+      if (response.ok) {
+        Alert.alert("Success", "User registered successfully!");
+        navigation.navigate("Tab"); // Navigate to another screen on success
+      } else {
+        Alert.alert("Error", data.message || "Something went wrong.");
+      }
+    } catch (error) {
+      console.error("Error during registration:", error);
+      Alert.alert("Error", "An error occurred during registration.");
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -59,12 +137,17 @@ const Register = () => {
 
       <View style={styles.form}>
         <View style={styles.row}>
-          <TextInput placeholder="Name" style={styles.textInput} />
           <TextInput
-            placeholder="Email"
+            placeholder="First name"
             style={styles.textInput}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            value={FirstName}
+            onChangeText={setFirstName}
+          />
+          <TextInput
+            placeholder="Last name"
+            style={styles.textInput}
+            value={LastName}
+            onChangeText={setLastName}
           />
         </View>
 
@@ -73,32 +156,49 @@ const Register = () => {
             placeholder="Phone"
             style={styles.textInput}
             keyboardType="phone-pad"
+            value={Phone}
+            onChangeText={setPhone}
           />
-          <TextInput placeholder="Designation" style={styles.textInput} />
+          <TextInput
+            placeholder="Designation"
+            style={styles.textInput}
+            value={Designation}
+            onChangeText={setDesignation}
+          />
         </View>
 
         <TextInput
-          placeholder="Address"
+          placeholder="Email"
           style={[styles.textInput, styles.addressInput]}
-          multiline={true}
-          numberOfLines={3}
+          keyboardType="email-address"
+          value={Email}
+          onChangeText={setEmail}
         />
         <TextInput
           placeholder="Department"
           style={[styles.textInput, { width: "100%", marginTop: 15 }]}
+          value={Department}
+          onChangeText={setDepartment}
         />
         <TextInput
-          placeholder="Office Location"
+          placeholder="Password"
           style={[styles.textInput, { width: "100%", marginTop: 15 }]}
+          secureTextEntry
+          value={Password}
+          onChangeText={setPassword}
+        />
+        <TextInput
+          placeholder="Date of joining"
+          style={[styles.textInput, { width: "100%", marginTop: 15 }]}
+          value={DateOfJoining}
+          onChangeText={setDateOfJoining}
         />
 
         <Pressable
           style={[styles.button, { backgroundColor: buttonColor }]}
           onPressIn={() => setButtonColor("#000")}
           onPressOut={() => setButtonColor("#49cbeb")}
-          onPress={() => {
-            navigation.navigate("Tab");
-          }}
+          onPress={handleRegister} // Register on button press
         >
           <Text style={[styles.buttonText, { color: buttonTextColor }]}>
             Register
@@ -134,7 +234,7 @@ export default Register;
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    paddingTop: 70,
+    paddingTop: 50,
     alignItems: "center",
     backgroundColor: "#f4f5f6",
     padding: 20,
