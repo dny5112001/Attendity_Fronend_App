@@ -24,6 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import ProfileImage from "../assets/ProfileImage.jpg";
 import ReservationList from "react-native-calendars/src/agenda/reservation-list";
 import * as SMS from "expo-sms";
+import * as Device from "expo-device";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -36,6 +37,33 @@ const Home = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [imageUri, setImageUri] = useState(null); // For storing the captured image
+  const fetchAttendanceData = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token"); // Retrieve the auth token (use your method)
+      const response = await fetch("http://192.168.0.101:3000/attendance", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Pass token for authentication
+        },
+      });
+
+      const data = await response.json();
+      // console.log(data.attendance);
+      if (response.ok) {
+        setStatusData(data.attendance); // Update statusData with the fetched attendance records
+        // console.log(statusData);
+      } else {
+        Alert.alert("Error fetching attendance data ", data.message);
+        setStatusData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching attendance data:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAttendanceData(); // Fetch attendance data on component mount
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -65,8 +93,8 @@ const Home = () => {
   );
   // Function to calculate distance between two points (Haversine formula)
   const calculateDistance = (lat, lon) => {
-    const targetLat = 19.176572; // Replace with the target location's latitude
-    const targetLon = 72.845215; // Replace with the target location's longitude
+    const targetLat = 19.077006; // Replace with the target location's latitude
+    const targetLon = 72.847812; // Replace with the target location's longitude
     const R = 6371; // Radius of the Earth in km
     const dLat = ((lat - targetLat) * Math.PI) / 180;
     const dLon = ((lon - targetLon) * Math.PI) / 180;
@@ -81,6 +109,34 @@ const Home = () => {
     return distance;
   };
 
+  // const initiateFaceVerification = async () => {
+  //   if (imageUri) {
+  //     // Call your backend API to verify the captured image
+  //     const isVerified = await performFaceVerification(imageUri); // Pass the image URI to the backend API
+
+  //     if (isVerified) {
+  //       setShowModal(false); // Close modal after successful verification
+  //       alert("Checked In Successfull");
+
+  //       const checkInTime = new Date().toLocaleTimeString();
+  //       console.log("Check-In Time:", checkInTime);
+
+  //       // Update the statusData state with the new check-in entry
+  //       setStatusData((prevData) => [
+  //         ...(prevData || []), // Fallback to an empty array if prevData is undefined
+  //         {
+  //           checkIn: checkInTime,
+  //           checkOut: "00:00", // Initialize check-out time as null
+  //         },
+  //       ]);
+  //     } else {
+  //       alert("Face verification failed. Try again.");
+  //     }
+  //   } else {
+  //     alert("No image captured.");
+  //   }
+  // };
+
   const initiateFaceVerification = async () => {
     if (imageUri) {
       // Call your backend API to verify the captured image
@@ -88,19 +144,63 @@ const Home = () => {
 
       if (isVerified) {
         setShowModal(false); // Close modal after successful verification
-        alert("Checked In Successfull");
+        alert("Checked In Successfully");
 
         const checkInTime = new Date().toLocaleTimeString();
         console.log("Check-In Time:", checkInTime);
 
-        // Update the statusData state with the new check-in entry
-        setStatusData((prevData) => [
-          ...(prevData || []), // Fallback to an empty array if prevData is undefined
-          {
-            checkIn: checkInTime,
-            checkOut: "00:00", // Initialize check-out time as null
-          },
-        ]);
+        // Generate the DeviceId using Expo's Device module
+        const DeviceId =
+          Device.deviceName +
+          "-" +
+          Device.brand +
+          "-" +
+          Device.osBuildFingerprint +
+          "-" +
+          Device.deviceType;
+
+        try {
+          // Fetch current location
+          const location = await Location.getCurrentPositionAsync({});
+          const { latitude, longitude } = location.coords;
+
+          // API call to record the check-in time in the backend
+          const token = await AsyncStorage.getItem("token"); // Retrieve token from AsyncStorage
+
+          const response = await fetch("http://192.168.0.101:3000/checkIn", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`, // Include token in the request header
+            },
+            body: JSON.stringify({
+              checkInTime, // Pass check-in time to the backend
+              checkInLatitude: latitude, // Pass the dynamic latitude
+              checkInLongitude: longitude, // Pass the dynamic longitude
+              DeviceId, // Include the generated device ID
+            }),
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            // // If check-in is successful, update the statusData state
+            // setStatusData((prevData) => [
+            //   ...(prevData || []), // Fallback to an empty array if prevData is undefined
+            //   {
+            //     CheckIn: checkInTime,
+            //     CheckOut: null, // Initialize check-out time as null
+            //   },
+            // ]);
+
+            fetchAttendanceData();
+          } else {
+            alert(result.message || "Error during check-in.");
+          }
+        } catch (error) {
+          console.error("Error during check-in API call:", error);
+          alert("Error during check-in.");
+        }
       } else {
         alert("Face verification failed. Try again.");
       }
@@ -110,44 +210,116 @@ const Home = () => {
   };
 
   const performFaceVerification = async (capturedImageUri) => {
-    const staticImageUri = Asset.fromModule(
-      require("../assets/ProfileImage.jpg")
-    ).uri;
+    // Get the token from AsyncStorage (or any other secure storage)
+    const token = await AsyncStorage.getItem("token");
 
     try {
-      const formData = new FormData();
-
-      // Append the captured image
-      formData.append("img1", {
-        uri: capturedImageUri.uri, // Use the captured image URI
-        type: "image/jpeg",
-        name: "capturedImage.jpg",
-      });
-
-      // Append the static image from assets
-      formData.append("img2", {
-        uri: staticImageUri,
-        type: "image/jpeg",
-        name: "staticImage.jpg",
-      });
-
-      const response = await fetch("http://192.168.138.88:5000/compare_faces", {
-        method: "POST",
-        body: formData,
+      // Fetch the profile picture from the backend API
+      const response = await fetch("http://192.168.0.101:3000/getProfilePic", {
         headers: {
-          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
         },
       });
 
-      const result = await response.json();
-      // console.log(result);
-      // const verified = await result.verified;
-      return result.verified;
+      const data = await response.json();
+
+      if (response.ok && data.profilePic) {
+        // Get the profile image URI from the response (it's base64 encoded)
+        const staticImageUri = data.profilePic; // The profile image from the server as base64
+
+        // Prepare form data for face comparison
+        const formData = new FormData();
+
+        // Append the captured image
+        formData.append("img1", {
+          uri: capturedImageUri.uri, // Use the captured image URI
+          type: "image/jpeg",
+          name: "capturedImage.jpg",
+        });
+
+        // Append the static image from the backend API (base64 image)
+        formData.append("img2", {
+          uri: staticImageUri,
+          type: "image/jpeg",
+          name: "staticImage.jpg",
+        });
+
+        // Send the form data to the server for face comparison
+        const compareResponse = await fetch(
+          "http://192.168.0.101:5000/compare_faces",
+          {
+            method: "POST",
+            body: formData,
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        const result = await compareResponse.json();
+        return result.verified;
+      } else {
+        console.error(
+          "Error fetching profile picture:",
+          data.message || "Unknown error"
+        );
+        return false;
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Error during face verification:", error);
       return false;
     }
   };
+
+  // const checkLocation = async () => {
+  //   const { status } = await Location.requestForegroundPermissionsAsync();
+  //   if (status !== "granted") {
+  //     console.log("Permission to access location was denied");
+  //     return;
+  //   }
+
+  //   const location = await Location.getCurrentPositionAsync({});
+  //   const distance = calculateDistance(
+  //     location.coords.latitude,
+  //     location.coords.longitude
+  //   );
+
+  //   const isInside = distance <= 0.5; // 0.2 km or 200 meters threshold
+  //   console.log(distance);
+
+  //   if (isInside && !wasInside) {
+  //     // Check-In logic
+
+  //     setWasInside(true);
+  //     const checkInTime = new Date().toLocaleTimeString();
+  //     // console.log(checkInTime);
+
+  //     setStatusData((prevData) => {
+  //       // Check if the last entry is missing check-out time
+  //       if (
+  //         prevData.length > 0 &&
+  //         prevData[prevData.length - 1].checkOut === "00:00"
+  //       ) {
+  //         // Don't add a new check-in if the last entry has no check-out time
+  //         return prevData;
+  //       }
+  //       setShowModal(true); // Show modal to capture face
+  //     });
+  //   } else if (!isInside && wasInside) {
+  //     // Check-Out logic
+  //     setWasInside(false);
+  //     const checkOutTime = new Date().toLocaleTimeString();
+
+  //     setStatusData((prevData) => {
+  //       if (prevData.length > 0) {
+  //         const newData = [...prevData];
+  //         newData[newData.length - 1].checkOut = checkOutTime;
+  //         return newData;
+  //       }
+  //       return prevData;
+  //     });
+  //   }
+  // };
 
   const checkLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -162,12 +334,11 @@ const Home = () => {
       location.coords.longitude
     );
 
-    const isInside = distance <= 0.5; // 0.2 km or 200 meters threshold
+    const isInside = distance <= 0.0004; // 0.5 km or 500 meters threshold
     console.log(distance);
 
     if (isInside && !wasInside) {
       // Check-In logic
-
       setWasInside(true);
       const checkInTime = new Date().toLocaleTimeString();
       // console.log(checkInTime);
@@ -176,7 +347,7 @@ const Home = () => {
         // Check if the last entry is missing check-out time
         if (
           prevData.length > 0 &&
-          prevData[prevData.length - 1].checkOut === "00:00"
+          prevData[prevData.length - 1].CheckOut === null
         ) {
           // Don't add a new check-in if the last entry has no check-out time
           return prevData;
@@ -188,17 +359,53 @@ const Home = () => {
       setWasInside(false);
       const checkOutTime = new Date().toLocaleTimeString();
 
-      setStatusData((prevData) => {
-        if (prevData.length > 0) {
-          const newData = [...prevData];
-          newData[newData.length - 1].checkOut = checkOutTime;
-          return newData;
+      // setStatusData((prevData) => {
+      //   if (prevData.length > 0) {
+      //     const newData = [...prevData];
+      //     newData[newData.length - 1].CheckOut = checkOutTime;
+      //     return newData;
+      //   }
+      //   return prevData;
+      // });
+
+      const token = await AsyncStorage.getItem("token"); // Retrieve token from AsyncStorage
+      // Generate the DeviceId using Expo's Device module
+      const DeviceId =
+        Device.deviceName +
+        "-" +
+        Device.brand +
+        "-" +
+        Device.osBuildFingerprint +
+        "-" +
+        Device.deviceType;
+
+      // Call check-out API
+      try {
+        const response = await fetch("http://192.168.0.101:3000/checkOut", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Send the token here for authorization
+          },
+          body: JSON.stringify({
+            checkOutLatitude: location.coords.latitude,
+            checkOutLongitude: location.coords.longitude,
+            DeviceId: DeviceId, // Send the device ID here
+          }),
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          console.log("Check-out successful:", result.message);
+          fetchAttendanceData();
+        } else {
+          console.error("Check-out failed:", result.message);
         }
-        return prevData;
-      });
+      } catch (error) {
+        console.error("Error during check-out API call:", error);
+      }
     }
   };
-
   const pickImage = async () => {
     let result = await ImagePicker.launchCameraAsync({
       mediaTypes: ["images"],
@@ -261,6 +468,28 @@ const Home = () => {
       Alert.alert("An error occurred while sending the SOS message.");
     }
   };
+
+  const formatTime = (time) => {
+    if (!time) return "0:0 AM"; // Return default if time is not available
+
+    // Split the time into hour and minute parts
+    const [hours, minutes] = time.split(":");
+
+    // Create a new Date object using the hour and minute
+    const date = new Date();
+    date.setHours(hours);
+    date.setMinutes(minutes);
+
+    const options = {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true, // 12-hour format
+    };
+
+    // Convert the time to a 12-hour format with AM/PM
+    return date.toLocaleTimeString([], options);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="auto" backgroundColor="#f4f5f6" />
@@ -693,10 +922,10 @@ const Home = () => {
               }}
             >
               <Text style={{ fontFamily: "ZonaExtraLight", fontSize: 12 }}>
-                Check In : {item.checkIn}
+                Check In : {formatTime(item.CheckIn)}
               </Text>
               <Text style={{ fontFamily: "ZonaExtraLight", fontSize: 12 }}>
-                Check Out : {item.checkOut || "00:00"}
+                Check Out : {formatTime(item.CheckOut) || "00:00 AM"}
               </Text>
             </View>
           )}

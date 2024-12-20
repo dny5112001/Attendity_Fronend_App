@@ -1,6 +1,6 @@
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useFonts } from "expo-font";
 import Ionicons from "react-native-vector-icons/Ionicons"; // Import vector icons
 import FontAwesome from "react-native-vector-icons/FontAwesome"; // Import vector icons
@@ -13,6 +13,56 @@ const Profile = () => {
     ZonaProBold: require("../assets/fonts/zona-pro/ZonaPro-Bold.otf"),
     ZonaExtraLight: require("../assets/fonts/zona-pro/ZonaPro-ExtraLight.otf"),
   });
+  const [imageUri, setImageUri] = useState(null);
+
+  const [formData, setFormData] = useState({
+    Firstname: "",
+    LastName: "",
+    dateOfJoining: "",
+  });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      const response = await fetch("http://192.168.0.101:3000/getProfile", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Pass the token for authentication
+        },
+      });
+
+      const responseData = await response.json();
+      if (response.ok) {
+        // Populate formData with the profile data from the backend
+        const { profile } = responseData;
+        setFormData({
+          Firstname: profile.FirstName,
+          LastName: profile.LastName,
+          dateOfJoining: profile.DateOfJoining, // You can map this to a specific field if needed
+        });
+
+        if (profile.ProfilePic) {
+          // console.log(profile.ProfilePic);
+          setImageUri(profile.ProfilePic); // Set the profile image if available
+        }
+      } else {
+        console.error("Error fetching profile data:", responseData.message);
+      }
+    } catch (error) {
+      console.error("Error during API request:", error);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const formattedDate = date.toISOString().split("T")[0]; // This will return 'YYYY-MM-DD'
+    return formattedDate;
+  };
 
   return (
     <View style={styles.container}>
@@ -59,7 +109,7 @@ const Profile = () => {
           }}
         >
           <Image
-            source={ProfileImg}
+            source={{ uri: imageUri }}
             style={{
               height: 120,
               width: 120,
@@ -75,7 +125,7 @@ const Profile = () => {
               fontSize: 16,
             }}
           >
-            Joined
+            Joined on
           </Text>
           <Text
             style={{
@@ -84,7 +134,9 @@ const Profile = () => {
               fontSize: 16,
             }}
           >
-            1 year ago
+            {formData.dateOfJoining
+              ? formatDate(formData.dateOfJoining)
+              : "Not available"}
           </Text>
         </View>
       </View>
@@ -93,12 +145,12 @@ const Profile = () => {
         <Text
           style={{ fontFamily: "ZonaProBold", fontSize: 25, color: "#1C1C1C" }}
         >
-          Deepak
+          {formData.Firstname}
         </Text>
         <Text
           style={{ fontFamily: "ZonaProBold", fontSize: 25, color: "#A4A4A4" }}
         >
-          Yadav
+          {formData.LastName}
         </Text>
       </View>
 

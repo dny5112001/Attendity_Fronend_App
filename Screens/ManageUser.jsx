@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
 import {
   StyleSheet,
@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useFonts } from "expo-font";
 import ProfileImage from "../assets/ProfileImage.jpg";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ManageUser = () => {
   const navigation = useNavigation();
@@ -25,14 +26,55 @@ const ManageUser = () => {
   });
 
   const [formData, setFormData] = useState({
-    name: "Deepak Yadav",
-    email: "DeepakY511@gmail.com",
-    phone: "8779889761",
-    designation: "SDE",
-    address: "Worli , Mumbai , Maharashtra",
-    department: "IT",
-    officeLocation: "Building A, 3rd Floor,Navi Mumbai",
+    Firstname: "",
+    LastName: "",
+    email: "",
+    phone: "",
+    designation: "",
+    department: "",
+    dateOfJoining: "",
   });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      const response = await fetch("http://192.168.0.101:3000/getProfile", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Pass the token for authentication
+        },
+      });
+
+      const responseData = await response.json();
+      if (response.ok) {
+        // Populate formData with the profile data from the backend
+        const { profile } = responseData;
+        setFormData({
+          Firstname: profile.FirstName,
+          LastName: profile.LastName,
+          email: profile.Email,
+          phone: profile.Phone,
+          designation: profile.Designation,
+          dateOfJoining: profile.DateOfJoining, // You can map this to a specific field if needed
+          department: profile.Department,
+        });
+
+        if (profile.ProfilePic) {
+          // console.log(profile.ProfilePic);
+          setImageUri(profile.ProfilePic); // Set the profile image if available
+        }
+      } else {
+        console.error("Error fetching profile data:", responseData.message);
+      }
+    } catch (error) {
+      console.error("Error during API request:", error);
+    }
+  };
 
   const pickImage = async () => {
     const permissionResult =
@@ -45,7 +87,7 @@ const ManageUser = () => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaType: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      // allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
     });
@@ -67,6 +109,12 @@ const ManageUser = () => {
     });
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const formattedDate = date.toISOString().split("T")[0]; // This will return 'YYYY-MM-DD'
+    return formattedDate;
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>User Profile</Text>
@@ -82,17 +130,17 @@ const ManageUser = () => {
       <View style={styles.form}>
         <View style={styles.row}>
           <TextInput
-            placeholder="Name"
+            placeholder="First name"
             style={styles.textInput}
-            value={formData.name}
+            value={formData.Firstname}
             onChangeText={(text) => handleChange("name", text)}
           />
           <TextInput
-            placeholder="Email"
+            placeholder="Last name"
             style={styles.textInput}
             keyboardType="email-address"
             autoCapitalize="none"
-            value={formData.email}
+            value={formData.LastName}
             onChangeText={(text) => handleChange("email", text)}
           />
         </View>
@@ -114,12 +162,13 @@ const ManageUser = () => {
         </View>
 
         <TextInput
-          placeholder="Address"
+          placeholder="Date of joining"
           style={[styles.textInput, styles.addressInput]}
           multiline={true}
-          numberOfLines={3}
-          value={formData.address}
-          onChangeText={(text) => handleChange("address", text)}
+          value={
+            formData.dateOfJoining ? formatDate(formData.dateOfJoining) : ""
+          } // Format date here
+          editable={false} // Make it read-only if you don't want the user to edit
         />
         <TextInput
           placeholder="Department"
@@ -127,20 +176,12 @@ const ManageUser = () => {
           value={formData.department}
           onChangeText={(text) => handleChange("department", text)}
         />
-        <TextInput
-          placeholder="Office Location"
-          style={[styles.textInput, { width: "100%", marginTop: 15 }]}
-          value={formData.officeLocation}
-          onChangeText={(text) => handleChange("officeLocation", text)}
-        />
 
         <Pressable
           style={[styles.button, { backgroundColor: buttonColor }]}
           onPressIn={() => setButtonColor("#000")}
           onPressOut={() => setButtonColor("#49cbeb")}
-          onPress={() => {
-            navigation.navigate("Tab");
-          }}
+          // Call the handleUpdate function when the button is pressed
         >
           <Text style={[styles.buttonText, { color: buttonTextColor }]}>
             Update
@@ -188,6 +229,7 @@ const styles = StyleSheet.create({
 
   form: {
     width: "100%",
+    marginTop: 70,
   },
 
   row: {
