@@ -25,6 +25,7 @@ import ProfileImage from "../assets/ProfileImage.jpg";
 import ReservationList from "react-native-calendars/src/agenda/reservation-list";
 import * as SMS from "expo-sms";
 import * as Device from "expo-device";
+import { url } from "./data";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -40,7 +41,7 @@ const Home = () => {
   const fetchAttendanceData = async () => {
     try {
       const token = await AsyncStorage.getItem("token"); // Retrieve the auth token (use your method)
-      const response = await fetch("http://192.168.0.101:3000/attendance", {
+      const response = await fetch(`${url}:3000/attendance`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`, // Pass token for authentication
@@ -48,7 +49,7 @@ const Home = () => {
       });
 
       const data = await response.json();
-      // console.log(data.attendance);
+      console.log(data);
       if (response.ok) {
         setStatusData(data.attendance); // Update statusData with the fetched attendance records
         // console.log(statusData);
@@ -93,8 +94,8 @@ const Home = () => {
   );
   // Function to calculate distance between two points (Haversine formula)
   const calculateDistance = (lat, lon) => {
-    const targetLat = 19.077006; // Replace with the target location's latitude
-    const targetLon = 72.847812; // Replace with the target location's longitude
+    const targetLat = 18.935398; // Replace with the target location's latitude
+    const targetLon = 72.825294; // Replace with the target location's longitude
     const R = 6371; // Radius of the Earth in km
     const dLat = ((lat - targetLat) * Math.PI) / 180;
     const dLon = ((lon - targetLon) * Math.PI) / 180;
@@ -167,7 +168,7 @@ const Home = () => {
           // API call to record the check-in time in the backend
           const token = await AsyncStorage.getItem("token"); // Retrieve token from AsyncStorage
 
-          const response = await fetch("http://192.168.0.101:3000/checkIn", {
+          const response = await fetch(`${url}:3000/checkIn`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -215,7 +216,7 @@ const Home = () => {
 
     try {
       // Fetch the profile picture from the backend API
-      const response = await fetch("http://192.168.0.101:3000/getProfilePic", {
+      const response = await fetch(`${url}:3000/getProfilePic`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -245,16 +246,13 @@ const Home = () => {
         });
 
         // Send the form data to the server for face comparison
-        const compareResponse = await fetch(
-          "http://192.168.0.101:5000/compare_faces",
-          {
-            method: "POST",
-            body: formData,
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        const compareResponse = await fetch(`${url}:5000/compare_faces`, {
+          method: "POST",
+          body: formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
 
         const result = await compareResponse.json();
         return result.verified;
@@ -334,7 +332,7 @@ const Home = () => {
       location.coords.longitude
     );
 
-    const isInside = distance <= 0.0004; // 0.5 km or 500 meters threshold
+    const isInside = distance <= 0.0005; // 0.5 km or 500 meters threshold
     console.log(distance);
 
     if (isInside && !wasInside) {
@@ -381,7 +379,7 @@ const Home = () => {
 
       // Call check-out API
       try {
-        const response = await fetch("http://192.168.0.101:3000/checkOut", {
+        const response = await fetch(`${url}:3000/checkOut`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -437,7 +435,7 @@ const Home = () => {
     View on Google Maps: https://www.google.com/maps?q=${latitude},${longitude}`;
 
       // Array of phone numbers to send SMS to
-      const phoneNumbers = ["9136833946"]; // Add more numbers as needed
+      const phoneNumbers = ["9369073223", "7709573696", "9967208944"]; // Add more numbers as needed
 
       // Send the SMS with the SOS message
       const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
@@ -445,7 +443,7 @@ const Home = () => {
       // Prepare data for backend API
       const token = await AsyncStorage.getItem("token");
       console.log(token);
-      const response = await fetch("http://192.168.0.101:3000/addSOS", {
+      const response = await fetch(`${url}:3000/addSOS`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

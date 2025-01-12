@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFonts } from "expo-font";
 import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { url } from "./data";
 
 const Register = () => {
   const navigation = useNavigation();
@@ -102,7 +103,7 @@ const Register = () => {
     }
 
     try {
-      const response = await fetch("http://192.168.0.101:3000/register", {
+      const response = await fetch(`${url}:3000/register`, {
         method: "POST",
         body: formData,
       });

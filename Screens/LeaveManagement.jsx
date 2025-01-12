@@ -12,6 +12,7 @@ import { useFonts } from "expo-font";
 import { Picker } from "@react-native-picker/picker"; // Import from @react-native-picker/picker
 import { TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { url } from "./data";
 
 const LeaveManagement = () => {
   const [leaveType, setLeaveType] = useState("Casual Leave");
@@ -52,7 +53,7 @@ const LeaveManagement = () => {
     }
 
     try {
-      const response = await fetch("http://192.168.0.102:3000/applyLeave", {
+      const response = await fetch(`${url}:3000/applyLeave`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

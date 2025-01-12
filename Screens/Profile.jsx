@@ -6,6 +6,7 @@ import Ionicons from "react-native-vector-icons/Ionicons"; // Import vector icon
 import FontAwesome from "react-native-vector-icons/FontAwesome"; // Import vector icons
 import ProfileImg from "../assets/ProfileImage.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { url } from "./data";
 
 const Profile = () => {
   const navigation = useNavigation();
@@ -29,7 +30,7 @@ const Profile = () => {
     try {
       const token = await AsyncStorage.getItem("token");
 
-      const response = await fetch("http://192.168.0.101:3000/getProfile", {
+      const response = await fetch(`${url}:3000/getProfile`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`, // Pass the token for authentication

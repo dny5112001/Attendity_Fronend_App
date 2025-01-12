@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { url } from "./data";
 
 const LoginPage = () => {
   const navigation = useNavigation();
@@ -43,7 +44,7 @@ const LoginPage = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch("http://192.168.0.101:3000/login", {
+      const response = await fetch(`${url}:3000/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

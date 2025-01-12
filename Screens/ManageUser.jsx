@@ -14,6 +14,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useFonts } from "expo-font";
 import ProfileImage from "../assets/ProfileImage.jpg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { url } from "./data";
 
 const ManageUser = () => {
   const navigation = useNavigation();
@@ -43,7 +44,7 @@ const ManageUser = () => {
     try {
       const token = await AsyncStorage.getItem("token");
 
-      const response = await fetch("http://192.168.0.101:3000/getProfile", {
+      const response = await fetch(`${url}:3000/getProfile`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`, // Pass the token for authentication
